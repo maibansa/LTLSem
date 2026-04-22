@@ -1,0 +1,89 @@
+# =============================================================================
+# BATERÍA DE FÓRMULAS DLTL - 1 VARIABLE (X) - SINTAXIS SNOMED 
+# =============================================================================
+
+# NIVEL 1: 1 PROPOSICIÓN, 1 VARIABLE
+# Objetivo: Verificación de existencia simple en la traza.
+F x.("(x)PROP.IsDiagnosis(x[Snomed])")
+F x.("(x)PROP.IsMedication(x[Snomed])")
+F x.("(x)PROP.IsProcedure(x[Snomed])")
+F x.("(x)PROP.IsCarePlanActivity(x[Snomed])")
+F x.("(x)PROP.HasSnomedCode(x[Snomed], '0')")
+
+# NIVEL 2: 2 PROPOSICIONES, 1 VARIABLE
+# Objetivo: Relación de causalidad o secuencia entre dos estados.
+# Estructura: G x.(Prop1 & Prop2)
+F x.("(x)PROP.IsDiagnosis(x[Snomed]) and PROP.IsMedication(x[Snomed])")
+F x.("(x)PROP.HasSnomedCode(x[Snomed], '395142003')"& Lab_Technician )
+F x.("(x)PROP.IsMedication(x[Snomed])" & Pharmacist)
+F x.("(x)PROP.IsDiagnosis(x[Snomed])"& Practitioner)
+F x.("(x)PROP.HasSnomedCode(x[Snomed], '44054006') and PROP.IsDiagnosis(x[Snomed])")
+
+
+# NIVEL 3: 3 PROPOSICIONES, 1 VARIABLE
+# Objetivo: Protocolos clínicos de tres pasos encadenados.
+# Estructura: G x.(Prop1 -> F x.(Prop2 -> F x.(Prop3)))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> F x.("(x)PROP.IsMedication(x[Snomed])" -> F x.("(x)PROP.IsProcedure(x[Snomed])")))
+G x.("(x)PROP.IsProcedure(x[Snomed])" -> F x.("(x)PROP.IsCarePlanActivity(x[Snomed])" -> F x.("(x)PROP.IsDiagnosis(x[Snomed])")))
+G x.("(x)PROP.IsMedication(x[Snomed])" -> F x.("(x)PROP.IsProcedure(x[Snomed])" -> F x.("(x)PROP.IsCarePlanActivity(x[Snomed])")))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> F x.("(x)PROP.IsCarePlanActivity(x[Snomed])" -> F x.("(x)PROP.IsMedication(x[Snomed])")))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '410606002')" -> F x.("(x)PROP.IsCarePlanActivity(x[Snomed])" -> F x.("(x)PROP.IsMedication(x[Snomed])")))
+
+
+
+# =============================================================================
+# BATERÍA DE FÓRMULAS DLTL - 2 VARIABLES (X, Y) - SINTAXIS SNOMED 
+# =============================================================================
+
+# NIVEL 1: 1 PROPOSICIÓN BINARIA, 2 VARIABLES
+# (Siguiendo tu estructura de éxito de Auditoría)
+F x.(X F y.("(x,y)PROP.AuditTrail(x[Snomed], y[Snomed])"))
+F x.(X F y.("(x,y)PROP.SameSnomedCode(x[Snomed], y[Snomed])"))
+F x.(X F y.("(x,y)PROP.IsSnomedFollowup(x[Snomed], y[Snomed])"))
+F x.(X F y.("(x,y)PROP.FollowsWithDiagnosis(x[Snomed], y[Snomed])"))
+F x.(X F y.("(x,y)PROP.DiagnosisMatchesTreatment(x[Snomed], y[Snomed])"))
+
+# NIVEL 2: 2 PROPOSICIONES, 2 VARIABLES
+# (Combinando una unaria y una binaria con X F)
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.("(x,y)PROP.AuditTrail(x[Snomed], y[Snomed])"))
+G x.("(x)PROP.IsMedication(x[Snomed])" -> X F y.("(x,y)PROP.SameSnomedCode(x[Snomed], y[Snomed])"))
+G x.("(x)PROP.IsProcedure(x[Snomed])" -> X F y.("(x,y)PROP.IsSnomedFollowup(x[Snomed], y[Snomed])"))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '395142003')" -> X F y.("(x,y)PROP.AuditTrail(x[Snomed], y[Snomed])"))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.("(x,y)PROP.DiagnosisMatchesTreatment(x[Snomed], y[Snomed])"))
+
+# NIVEL 3: 3 PROPOSICIONES, 2 VARIABLES
+# (Triple condición usando la estructura que te funcionaba ayer)
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.("(x,y)PROP.AuditTrail(x[Snomed], y[Snomed])" & "(y)PROP.IsMedication(y[Snomed])"))
+G x.("(x)PROP.IsMedication(x[Snomed])" -> X F y.("(x,y)PROP.SameSnomedCode(x[Snomed], y[Snomed])" & "(x,y)(y[Timestamp] - x[Timestamp] < 86400)"))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '410606002')" -> X F y.("(x,y)PROP.AuditTrail(x[Snomed], y[Snomed])" & "(y)PROP.IsCarePlanActivity(y[Snomed])"))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.("(x,y)PROP.IsSnomedFollowup(x[Snomed], y[Snomed])" & "(y)PROP.IsProcedure(y[Snomed])"))
+G x.("(x)PROP.RequiresAttribute(x[Snomed], 'visit_allergist')" -> X F y.("(x,y)PROP.AuditTrail(x[Snomed], y[Snomed])" & "(x,y)(y[Timestamp] - x[Timestamp] < 3600)"))
+
+# =============================================================================
+# BATERÍA DE FÓRMULAS DLTL - 3 VARIABLES (X, Y, Z) - 
+# =============================================================================
+
+# NIVEL 1: LLAMADAS DIRECTAS A FUNCIONES DE SECUENCIA
+# (Verificación básica de cumplimiento de protocolos SNOMED en 3 pasos)
+F x.(X F y.(X F z.("(x,y,z)PROP.SnomedChain3(x[Snomed], y[Snomed], z[Snomed])")))
+F x.(X F y.(X F z.("(x,y,z)PROP.SnomedEvolution(x[Snomed], y[Snomed], z[Snomed])")))
+F x.(X F y.(X F z.("(x,y,z)PROP.DiagnosisTreatmentSnomed(x[Snomed], y[Snomed], z[Snomed])")))
+F x.(X F y.(X F z.("(x,y,z)PROP.MultiSnomedValidation(x[Snomed], y[Snomed], z[Snomed])")))
+G x.(X F y.(X F z.("(x,y,z)PROP.MultiSnomedValidation(x[Snomed], y[Snomed], z[Snomed])")))
+
+# NIVEL 2: CONDICIONALES BASADOS EN EL ESTADO INICIAL
+# (Si ocurre un diagnóstico o estado inicial, debe seguir la secuencia lógica)
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.(X F z.("(x,y,z)PROP.DiagnosisTreatmentSnomed(x[Snomed], y[Snomed], z[Snomed])")))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '609328004')" -> X F y.(X F z.("(x,y,z)PROP.SnomedEvolution(x[Snomed], y[Snomed], z[Snomed])")))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '203082004')" -> X F y.(X F z.("(x,y,z)PROP.MultiSnomedValidation(x[Snomed], y[Snomed], z[Snomed])")))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.(X F z.("(x,y,z)PROP.DiagnosisTreatmentSnomed(x[Snomed], y[Snomed], z[Snomed])")))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '404684003')" -> X F y.(X F z.("(x,y,z)PROP.SnomedChain3(x[Snomed], y[Snomed], z[Snomed])")))
+
+# NIVEL 3: COMPOSICIÓN CON FILTROS DE TIEMPO Y CAMBIO CLÍNICO
+# (Uso de MultiSnomedValidation para detectar cambios y restricciones temporales)
+
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.(X F z.("(x,y,z)PROP.SnomedChain3(x[Snomed], y[Snomed], z[Snomed])" & "(x,z)(z[Timestamp] - x[Timestamp] < 172800)")))
+G x.("(x)PROP.HasSnomedCode(x[Snomed], '410606002')" -> X F y.(X F z.("(x,y,z)PROP.DiagnosisTreatmentSnomed(x[Snomed], y[Snomed], z[Snomed])" & "(x,y)(y[Timestamp] - x[Timestamp] < 3600)")))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.(X F z.("(x,y,z)PROP.MultiSnomedValidation(x[Snomed], y[Snomed], z[Snomed])" & "(x,z)(z[Timestamp] - x[Timestamp] < 259200)")))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.(X F z.("(x,y,z)PROP.MultiSnomedValidation(x[Snomed], y[Snomed], z[Snomed])" & "(x,z)(z[Timestamp] - x[Timestamp] < 259200)")))
+G x.("(x)PROP.IsDiagnosis(x[Snomed])" -> X F y.(X F z.("(x,y,z)PROP.MultiSnomedValidation(x[Snomed], y[Snomed], z[Snomed])" & "(x,y)(y[Timestamp] - x[Timestamp] < 86400)" & "(x,z)(z[Timestamp] - x[Timestamp] < 172800)")))

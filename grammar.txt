@@ -1,0 +1,35 @@
+
+Priorities in descending order per line:
+!
+X Y
+G H
+F O
+U S
+&
+|
+
+Grammar:
+
+id: [a-zA-Z]+
+
+formula: "AAA"
+formula: true
+formula: false
+formula: id
+
+formula: X formula
+formula: Y formula
+formula: G formula
+formula: H formula
+formula: F formula
+formula: O formula
+formula: formula U formula
+formula: formula S formula
+formula: [a-z].(formula)
+
+formula: ! formula
+formula: formula & formula (& formula)*
+formula: formula | formula (| formula)*
+
+formula: ( formula )
+

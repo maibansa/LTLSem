@@ -1,0 +1,11 @@
+_LOAD PROP D:\\py_MC-main_working\\py_MC-main_working\\test\\snomed\\GeneradorSynthea\\my_propositions.py 
+_LOAD PROP F:\\py_MC-main_working\\py_MC-main_working\\test\\snomed\\GeneradorSynthea\\my_propositions.py 
+_LOAD PROP H:\\py_MC-main_working\\py_MC-main_working\\test\\snomed\\GeneradorSynthea\\my_propositions.py 
+F x.("(x)PROP.IsDiagnosis(x[Snomed])")
+F x.("(x)PROP.IsDiagnosis(x[Snomed])")
+F x.("(x)PROP.IsMedication(x[Snomed])")
+;F x.("(x)PROP.IsProcedure(x[Snomed])")
+;F x.("(x)PROP.IsCarePlanActivity(x[Snomed])")
+;G x.("(x)PROP.HasSnomedCode(x[Snomed], '0')")
+_WRITE
+agur

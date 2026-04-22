@@ -1,0 +1,5 @@
+En el campo "Details"  de WFSemTrazas.csv, tal y como está en Github, hay dos cosas que cambiar:
+1) sustituir "; " por ";" (hay 170)
+2) hay 22 ",", que sustituyo por "-"
+3) remplazar ", /" de los campos de los atributos, por "_"
+3) eliminar la línea 104, que es una cabecera

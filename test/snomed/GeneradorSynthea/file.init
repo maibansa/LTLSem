@@ -1,0 +1,3 @@
+_LOAD PROP D:\\py_MC-main_working\\py_MC-main_working\\test\\snomed\\GeneradorSynthea\\my_propositions.py 
+_SET ?actors Primary_Care_Physician, Practitioner, Physician, Surgeon, ER_Staff, Lab_Technician, Radiologist, Pharmacist, Care_Manager, Oncologist, Medical_Examiner, Clinical_System 
+ 

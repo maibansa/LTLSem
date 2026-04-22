@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+---------------------------------------------------------------------------
+File:   log_handling.py
+Author: J. Ezpeleta
+Date:   mayo-2025
+Coms:   invocar como 
+           python log_handling.py <fich_mod_sin_ext>
+
+        El fichero "<fich_mod_sin_ext>.mod" tiene un modelo en el formato clásico de MC
+
+        a,b,_End_
+        aE,nV,@att,$p
+        14
+        id1,c
+        id1,a&1&a;1&a=1;b=2
+        id1,b&1&a;2&a=1;b=2
+        ...
+
+---------------------------------------------------------------------------
+"""
+import os
+import sys
+import DLTL as MC
+
+
+import re
+from itertools import product
+import pprint
+
+from rdflib import Graph, RDF, RDFS, OWL, XSD, Literal, Namespace
+EX = Namespace("http://example.org/")
+DOMAIN_ONTOLOGY = Namespace("http://snomed.info/sct/")
+
+ID_SEP = ','
+ATRIB_SEP = '&'
+VALS_SEP = ';'
+
+# de momento la única que vamos a manejar, que se pone como valor
+# por defecto en "load_mod(path_root, ontoPath = ONTO_PATH):"
+ONTO_PATH = "semantic_logs/segitour.owl"
+
+# global para tener los id ordenados, y usarlo al guardar resultados
+IDS = []
+# ---------------------------------------
+# Carga la ontología en "path"
+# Devuelve un dicc (propiedad_de_tipo,rango_de _valores)
+def load_ontology(path):
+    # Cargar ontología
+    g = Graph()
+    g.parse(path, format="xml")
+
+    # Construir diccionario propiedad -> rango (como string)
+    property_ranges = {}
+    for prop in g.subjects(RDF.type, OWL.DatatypeProperty):
+        rango = g.value(prop, RDFS.range)
+        if rango is not None:
+            property_ranges[str(prop)] = str(rango)
+    return property_ranges
+
+def cast_value(property_ranges, prop_uri, value_str):
+    rango = property_ranges.get(prop_uri)
+    if rango is None:
+        return value_str
+
+    if rango == "xsd:integer":
+        return int(value_str)
+    elif rango == "xsd:boolean":
+        val_lower = value_str.lower()
+        if val_lower in ("true", "1"):
+            return True
+        elif val_lower in ("false", "0"):
+            return False
+        else:
+            raise ValueError(f"Valor booleano inválido: {value_str}")
+    elif rango == "xsd:date":
+        # Espera formato ISO 8601: 'YYYY-MM-DD'
+        try:
+            return datetime.strptime(value_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(
+                f"Formato de fecha inválido: {value_str}, se esperaba 'YYYY-MM-DD'")
+    else:
+        return value_str
+# ---------------------------------------
+# convierte un string en uno válido como id de python
+def to_valid_identifier(s):
+    # Replace non-word chars or leading digits with _
+    s = re.sub(r'\W|^(?=\d)', '_', s)
+    return s
+# ---------------------------------------
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def is_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+# ---------------------------------------
+# formats: (a,n,@,$)
+# fieldNames: (E,V,att,p)
+# valsAtribs: [a, 4, "a;1", "a=1;b=2"]
+# line: línea del evento, para localizar en caso de problemas
+# devolverá: {'atomics':set('a'), 'V': 4, 'att': set('a','1'), p:dict('a':1,'b':2)}
+SUF_GRAPH = "_g"
+
+def generate_event(property_ranges, formats, fieldNames, valsAtribs, line):
+    # crear valores vacíos para dicts y sets
+    newEventStr = {'atomics': set()}  # siempre lo vamos a crear
+    for i in range(len(formats)):  # dependerán del log
+        if formats[i] == '@':  # es un conjunto de strings
+            newEventStr[fieldNames[i]] = set()
+        elif formats[i] == '$':  # es un diccionario, k1=v1;k2=v2; ....
+            # los vi se almacenarán como strings
+            newEventStr[fieldNames[i]] = dict()
+            newEventStr[fieldNames[i] + SUF_GRAPH] = Graph() #también como conj. de tripletas
+        elif formats[i] == 'a':  # irán a 'atomics'
+            pass
+        else:
+            newEventStr[fieldNames[i]] = None
+
+    # introducir los valores de los atributos en la estructura
+    for i in range(len(formats)):
+        if formats[i] == 'a':
+            newEventStr['atomics'].add(valsAtribs[i])
+        elif formats[i] == 'n':
+            if is_int(valsAtribs[i]) or is_float(valsAtribs[i]):
+                value = float(valsAtribs[i])
+            else:
+                print(
+                    f"Valor incorrecto como número: {valsAtribs[i]}", file=sys.stderr)
+                value = 0.0
+            newEventStr[fieldNames[i]] = value
+        elif formats[i] == 's':
+            newEventStr[fieldNames[i]] = valsAtribs[i]
+        elif formats[i] == '@':
+            for v in valsAtribs[i].split(VALS_SEP):
+                newEventStr[fieldNames[i]].add(v.strip())
+        elif formats[i] == '$':
+            # aplicar ontología a valores de atributos en diccionario
+            for v in valsAtribs[i].split(VALS_SEP):
+                # print(f"{valsAtribs[i]}")
+                try: 
+                    [key, value] = [s.strip() for s in v.split('=')]
+                    newEventStr[fieldNames[i]][key] = cast_value(
+                        property_ranges, key, value)
+
+                    # también como tripletas
+                    subject_uri = EX[str(line)]
+                    key_parts = key.split(":")
+                    predicate_uri = DOMAIN_ONTOLOGY[key_parts[len(key_parts)-1]]
+
+                    newEventStr[fieldNames[i] + SUF_GRAPH].add((subject_uri, predicate_uri, Literal(value)))
+                except Exception as e:
+                    print(f"Error procesando valores de atributo diccionario: {e}", file=sys.stderr)
+                    print(f"line {line}: {v}", file=sys.stderr)
+        else:
+            print("Formato de atributo incorrecto", file=sys.stderr)
+
+    return newEventStr
+# ---------------------------------------
+# listOfEvents: "a,b,c"
+# crea una función para cada evento, y la hace global para la ejecución
+def create_and_make_public_atomic_functions(listOfEvents):
+    events = listOfEvents.split(ID_SEP)
+    for e in events:  # a = MC.atom('a')
+        exec(f"{e} = MC.atom('{e}')", globals())
+# ---------------------------------------
+# carga el log
+# devuelve un diccionario con la información del log
+# la estructura es la que se asigna por defecto la "logData"
+def load_mod(path_root, ontoPath=ONTO_PATH):
+    logData = {'nTraces': 0, 'nEvents': 0, 'atomics': set(),
+               'traceLengths': dict(), 'sortedIDs': [],
+               'traces': dict(), 'path': path_root,
+               'attrib_desc': ""}
+
+    # de momento, cableado
+    property_ranges = load_ontology(ontoPath)
+
+    with open(path_root + '.mod', 'r') as f:
+        log = f.readlines()
+    # eliminar saltos de línea
+    log = list(map(str.strip, log))
+
+    # cada variable atómica será una función
+    create_and_make_public_atomic_functions(log[0])
+    logData['atomics'] = set(log[0].split(ID_SEP))
+    # aE,nV,@att,$p, ...
+    atribDesc = log[1].split(ID_SEP)
+    # a,n,@,$
+    formats = tuple(f[0] for f in atribDesc)
+    # E,V,att,p, ...
+    fieldNames = tuple(f[1:] for f in atribDesc)
+
+    # logData['traces'][id] será la traza de id
+    for i in range(3, len(log)):
+        # log[i]: id1,a&4&a;1&a=1;b=2
+        parts = log[i].split(ID_SEP)
+        # id: id1
+        id = parts[0]
+
+        # valAtribs: [a, 4, "a;1", "a=1;b=2"]
+        valsAtribs = parts[1].split(ATRIB_SEP)
+        # algo como {'atomics':{'a','b'}, 'V': 4, p:dict('k1':'1','k2':'kk')}
+        eventStruct = generate_event(
+            property_ranges, formats, fieldNames, valsAtribs, i)
+        if id in logData['traces']:
+            logData['traces'][id].append(eventStruct)
+        else:
+            logData['traces'][id] = [eventStruct]
+
+    logData['attrib_desc'] = atribDesc
+    logData['sortedIDs'] = sorted(logData['traces'])
+    logData['nTraces'] = len(logData['traces'])
+    for id in logData['sortedIDs']:
+        logData['traceLengths'][id] = len(logData['traces'][id])
+    
+    for id in logData['sortedIDs']:
+        logData['traces'][id] = tuple(logData['traces'][id])
+        
+    logData['nEvents'] = sum([len(logData['traces'][id])
+                             for id in logData['sortedIDs']])
+
+    return logData
+
+def print_info_log(logData):
+    print("----------------------------------------")
+    print(f"file:      {logData['path']}.mod")
+    print(f"#traces:   {logData['nTraces']}")
+    print(f"#events:   {logData['nEvents']}")
+    print(f"#atomics:  {len(logData['atomics'])}")
+    print(f"att. desc: {logData['attrib_desc']}")
+    print("----------------------------------------")
+# ---------------------------------------
+def save_trace_lengths(logData):
+    with open(logData['path'] + '_longs_trazas.txt', "w") as f:
+        for id in logData['sortedIDs']:
+            f.write(f"{id},{logData['traceLengths'][id]}\n")
+
+def save_results(logData, results, results_counts):
+    with open(logData['path'] + '.res', "w") as fR:
+        with open(logData['path'] + '.norm', "w") as fC:
+            for id in logData['sortedIDs']:
+                fR.write(f"{results[id]}\n")
+                fC.write(f"{results_counts[id]}\n")
+
+# results[id] = "id,1,0,1,...
+def who(logData, results):
+    return what(logData, results, '1')
+
+
+def who_not(logData, results):
+    return what(logData, results, '0')
+
+def what(logData, results, val):
+    listIds = ""
+    for id in logData['sortedIDs']:
+        res = results[id].rpartition(',')[-1]  # todo de después de última ','
+        if res == val:
+            listIds += id + " "
+    return listIds
+# ---------------------------------------
+# Dada una fórmula, posiblemente con macros del tipo '?activities' y
+# un diccionario del tipo {...,'?activities':('cargar','marcar','descargar'), ...}
+# genera una lista de fórmulas, una por cada posible valor de '?activities'
+# Si intervienen varios diccionarios, se generan fórmulas para el producto
+# cartesiano de todos los diccionarios
+# OjO para diccionarios grandes.
+def unfoldMacros(formulaWithMacros, dictMacros):
+    keysInString = [key for key in dictMacros if key in formulaWithMacros]
+
+    if not keysInString:
+        return [formulaWithMacros]  # no hay macros
+
+    # lista de todos los valores a sustituir
+    replacementLists = [dictMacros[key] for key in keysInString]
+
+    result = []
+    for combo in product(*replacementLists):
+        temp = formulaWithMacros
+        for key, value in zip(keysInString, combo):
+            temp = temp.replace(key, value)
+        result.append(temp)
+
+    return result
+# ---------------------------------------
+def show(log):
+    pprint.pprint(log, indent=2, width=40)
+# ---------------------------------------
+if __name__ == "__main__":
+    logData = load_mod_new("test/dos_trazas")
+    print_info_log_new(logData)

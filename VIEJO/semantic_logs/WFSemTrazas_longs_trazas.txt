@@ -1,0 +1,17 @@
+Case_1,10
+Case_10,10
+Case_11,8
+Case_12,8
+Case_13,7
+Case_14,10
+Case_15,8
+Case_16,15
+Case_17,12
+Case_2,10
+Case_3,10
+Case_4,10
+Case_5,10
+Case_6,10
+Case_7,10
+Case_8,10
+Case_9,10

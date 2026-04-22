@@ -1,0 +1,1 @@
+aActivity,nTimestamp,aActor,aActionType,sModelReference,sSnomed,aWorkflow

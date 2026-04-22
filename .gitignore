@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.nq
+py_MC-main_working/test/snomed/GeneradorSynthea/GenerarLogs/auto/
+py_MC-main_working/test/snomed/GeneradorSynthea/auto/
