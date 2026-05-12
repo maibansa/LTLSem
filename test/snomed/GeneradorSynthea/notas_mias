@@ -1,16 +1,16 @@
- _SET ?actors Primary_Care_Physician, Practitioner, Physician, Surgeon, ER_Staff, Lab_Technician, Radiologist, Pharmacist, Care_Manager, Oncologist, Medical_Examiner, Clinical_System #python MC.py log-file=test/snomed/GeneradorSynthea/auto/log_50_6_20
-#py -3.10 MC.py log-file=test/snomed/GeneradorSynthea/auto/log_50_6_20
+ _SET ?actors Primary_Care_Physician, Practitioner, Physician, Surgeon, ER_Staff, Lab_Technician, Radiologist, Pharmacist, Care_Manager, Oncologist, Medical_Examiner, Clinical_System #python3 MC.py log-file=test/snomed/GeneradorSynthea/auto/log_1000_61_80
+#py -3.10 MC.py log-file=test/snomed/GeneradorSynthea/auto/log_50_6_20 formula-file=test/snomed/GeneradorSynthea/formulas2.txt
 
 
 
-
+python3 MC.py log-file=test/snomed/GeneradorSynthea/auto/log_1000_61_80   formula-file=test/snomed/GeneradorSynthea/formulas2.txt > test/snomed/GeneradorSynthea/auto/log_1000_61_80_res.txt
 
 #init-file=test/snomed/GeneradorSynthea/output.init > test/snomed/GeneradorSynthea/auto/log_50_6_20_res.txt
 # formula-file=test/snomed/GeneradorSynthea/input.txt 
 # init-file=test/snomed/GeneradorSynthea/output_1000.init
 
 
-# _LOAD PROP test/snomed/GeneradorSynthea/funSynthea.py  
+# _LOAD PROP test/snomed/GeneradorSynthea/my_propositions2.py  
 # _LOAD PROP D:\\py_MC-main_working\\py_MC-main_working\\test\\snomed\\GeneradorSynthea\\funSynthea.py  
 
 # _LOAD PROP D:\\py_MC-main_working\\py_MC-main_working\\test\\snomed\\GeneradorSynthea\\my_propositions_10000_66_80.py 
